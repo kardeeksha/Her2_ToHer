@@ -37,13 +37,6 @@ chek2_seq = ensRest.getSequenceById(id='ENSG00000183765')
 pten_seq = ensRest.getSequenceById(id='ENSG00000171862')
 tp53_seq = ensRest.getSequenceById(id='ENSG00000141510')
 
-#assign sequence data
-#brca1_seq1 = standards.append(brca1_seq['seq'])
-#brca2_seq1 = standards.append(brca2_seq['seq'])
-#chek2_seq1 = standards.append(chek2_seq['seq'])
-#pten_seq1 = standards.append(pten_seq['seq'])
-#tp53_seq1 = standards.append(tp53_seq['seq'])
-
 for i in (brca1_seq,brca2_seq,chek2_seq,pten_seq,tp53_seq):
     standards.append(i['seq'])
 
@@ -73,56 +66,91 @@ pt_genes_NaN = []
 
 for i in range(len(pt_genes)):
     x = random.randint(1, 10)
-    print(x)
     if x < 7:
         pt_genes_NaN.append('NaN')
     else:
         pt_genes_NaN.append('MUT')
 
 
-df = pd.read_table('C:\\Users\\Helen Flynn\\Documents\\GitHub\\Her2_ToHer\\cBioPortal_data (1).txt',delim_whitespace=True,names=('Common','BRCA1','BRCA2','CHEK2','PTEN','TP53'))
+df = pd.read_csv('C:\\Users\\Helen Flynn\\Documents\\GitHub\\Her2_ToHer\\cBioPortal_data (1).txt',sep='\t',names=('Common','BRCA1','BRCA2','CHEK2','PTEN','TP53'))
 df=df[2:]
-df = df.reset_index()
 
-#TODO 
+
 def return_muts(id):
-    return(df.loc[id].notnull())
+    target=df.loc[id].notnull()
+    return (id, list(df.columns[target]))
 
-print(return_muts('MB-0008'))
+print(return_muts('MB-0062'))
 
+df=df.reset_index()
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
+colors = {
+    'background' : 'black',
+    'text' : 'white'
+}
+
 app.layout = html.Div([
-    dcc.Upload(
-        id='upload-data',
+    html.H1(children = "HER2her",
+    style = {
+        'textAlign' : 'center',
+        'color' : '#FFFFF'
+    }
+),
+    dcc.Upload(id='upload-data',
         children=html.Div([
-            'Upload Mutation Data Here (.csv,.txt) or ',
-            html.A('Launch Browser')
+            'Drag and Drop Single Patient Data (.txt or .csv) or ',
+            html.A('Select File')
         ]),
         style={
             'width': '100%',
             'height': '60px',
             'lineHeight': '60px',
             'borderWidth': '1px',
-            'borderStyle': 'solid',
+            'borderStyle': 'dashed',
             'borderRadius': '5px',
             'textAlign': 'center',
             'margin': '10px'
-        },
-        # Allow multiple files to be uploaded
-        multiple=False
-    ),
+        }),
     dash_table.DataTable(
         id='table',
         columns=[{"name": i, "id": i} for i in df.columns],
         data=df.to_dict("rows"),
         style_table={
             'maxHeight' : '300',
-            'overflowY' : 'scroll'
+            'overflowY' : 'scroll',
+            'border':0,
+            'align' : 'center'
         },
-    )
-])
+    ),
+    html.Iframe(
+      width="600",
+      height="450",
+      #frameborder="0",
+      style={
+        'border':0,
+        'align' : 'center',
+        'padding' : '50px'
+      },
+      src="https://www.google.com/maps/embed/v1/search?key=AIzaSyACU8QODHAUXs0igLHiqeFgUQaiNPNUGQ0&q=oncology+center"
+      )
+    ])
 
+
+# @app.callback(
+#      Output('table', 'data'),
+#      [Input('upload-data', 'contents')])
+#  def update_output(contents):
+#      if contents is not None:
+#          content_type, content_string = contents.split(',')
+#          if 'csv' in content_type:
+#              df = pd.read_csv(io.StringIO(base64.b64decode(content_string).decode('utf-8')))
+#              return html.Div([
+#                  dt.DataTable(rows=df.to_dict('records')),
+#                  html.Hr(),
+#                  html.Div('Raw Content'),
+#                  html.Pre(contents, style=pre_style)
+#             ])
 
 
 
