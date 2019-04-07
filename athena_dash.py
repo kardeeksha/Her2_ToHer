@@ -1,18 +1,15 @@
 # -*- coding: utf-8 -*-
 import dash
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
-import io
-import base64
-# Her2_Her
-import requests, sys
 from ensemblrest import EnsemblRest
 import random
 import pandas as pd
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+
 
 def rand_pt_genes(standards, mutations, pt_genes):
     brca1_pt = random.choice(brca1)
@@ -29,8 +26,6 @@ def rand_pt_genes(standards, mutations, pt_genes):
 
 
 ensRest = EnsemblRest()
-
-
 server = "http://rest.ensembl.org"
 
 # standard sequence API data
@@ -44,7 +39,7 @@ tp53_seq = ensRest.getSequenceById(id='ENSG00000141510')
 for i in (brca1_seq, brca2_seq, chek2_seq, pten_seq, tp53_seq):
     standards.append(i['seq'])
 
-#mutation dash_table
+# mutation dash_table
 mutations = []
 brca1_mut = ensRest.getSequenceById(id =  'ENST00000357654?content-type=text/x-fasta;type=cdna')
 brca2_mut = ensRest.getSequenceById(id = 'ENST00000380152?content-type=text/x-fasta;type=cdna')
@@ -78,14 +73,13 @@ for i in range(len(pt_genes)):
 
 df = pd.read_csv('C:\\Users\\Helen Flynn\\Documents\\GitHub\\Her2_ToHer\\cBioPortal_data (1).txt', sep = '\t' ,names = ('Common', 'BRCA1', 'BRCA2', 'CHEK2', 'PTEN', 'TP53'))
 df = df[2:]
-id = 'MB-0350'
+id1 = 'MB-0350'
 
-def return_muts(id):
-    target = df.loc[id].notnull()
+def return_muts(id1):
+    target = df.loc[id1].notnull()
     return (list(df.columns[target]))
 
-
-print(return_muts('MB-0062'))
+list_name = (return_muts(id1))
 
 df = df.reset_index()
 
@@ -96,7 +90,7 @@ def column_get(mut_name):
     df_1 = mut_fil[['Drug', 'Effect size']]
     return df_1
 
-list_name =["BRCA1","BRCA2"] ## this is the list of mutations present in the data
+list_name = (list_name) ## this is the list of mutations present in the data
 def calc_col(list_name):
     d = pd.DataFrame(columns = ['Drug', 'Effect size'])
     for x in list_name:
@@ -108,16 +102,18 @@ def calc_col(list_name):
 calc_col(list_name)
 
 out=pd.read_csv(path+"out.csv")
-out['sum'] = out['Effect size_y'] + out['Effect size']
+try:
+    out['sum'] = out['Effect size_y'] + out['Effect size']
+except KeyError:
+    out['sum'] = out['Effect size_y']
 
-drug_suggested= out.nsmallest(5,'sum')
+drug_suggested= out.nsmallest(5,('sum'[:4]))
 drug_harm = out.nlargest(5,'sum')
 
 drug_suggested[['Drug','sum']].to_csv(path+"suggested.csv")
 drug_harm[['Drug','sum']].to_csv(path+"harm.csv")
 
-df2 = pd.read_csv('C:\\Users\\Helen Flynn\\Documents\\GitHub\\Her2_ToHer\\suggested.csv')
-
+df2 = pd.read_csv(path+'suggested.csv')
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
@@ -144,10 +140,28 @@ app.layout = html.Div([
             'textAlign': 'center',
             'margin': '10px'
         }),
+    html.Div([
+       dcc.Input(placeholder='Enter Current Medications...', type="text", id='my-id', value=''),
+       html.Button('Submit', id='button'),
+       html.Div(id='my-div2')
+],
+       style={
+           'width': '100%',
+           'height': '130px',
+           'lineHeight': '60px',
+           'borderWidth': '1px',
+           'borderStyle': 'dashed',
+           'backgroundColor' : 'pink',
+           'borderRadius': '5px',
+           'textAlign': 'center',
+           'margin': '10px'
+       }),
     dash_table.DataTable(
         id='table',
         columns=[{"name": i, "id": i} for i in df.columns],
         data=df.to_dict("rows"),
+        sorting=True,
+        sorting_type="multi",
         style_table={
             'maxHeight' : '300',
             'overflowY' : 'scroll',
@@ -158,16 +172,29 @@ app.layout = html.Div([
         'backgroundColor': '#FFDFD3'
     }],
     ),
-    html.Div([
-        html.P("For patients with mutations in the "+str(list_name)+" genes, we recommend the following medicines."
-        )
-    ]),
+    dcc.Dropdown(
+        id='my-dropdown',
+        options=[
+            {'label': 'BRCA1', 'value': 'BRCA1'},
+            {'label': 'BRCA2', 'value': 'BRCA2'},
+            {'label': 'CHEK2', 'value': 'CHEK2'},
+            {'label': 'PTEN', 'value': 'PTEN'},
+            {'label': 'TP53', 'value': 'TP53'}
+        ],
+        value=list_name,
+        multi=True
+    ),
+    html.Div(id='my-div'),
     dash_table.DataTable(
         id='medtable',
-        columns=[{"name": i, "id": i} for i in df2.columns],
-        data=df2.to_dict("rows")
+        columns=[{"name": i, "id": i} for i in df2.columns[1:]],
+        data=df2.to_dict("rows"),
+        style_table={
+            'padding' : '20px',
+            'align' : 'center'
+            },
     ),
-        html.P('We would like to provide you with an interactive map of available cancer care providers.'
+        html.P('We would like to provide you with an interactive map of available cancer care providers to consult as you navigate through your medical journey.'
         ),
     html.Iframe(
       width="600",
@@ -182,26 +209,53 @@ app.layout = html.Div([
 
 
 
-# callback table creation
-@app.callback(Output('table', 'data'),
-              [Input('upload-data', 'contents'),
-               Input('upload-data', 'filename')])
-def update_output(contents, filename):
-    if contents is None:
-        print("contents is None")
-        df = pd.read_csv(io.StringIO(base64.b64decode(filename).decode('utf-8')), sep='\t', names=('Common', 'BRCA1', 'BRCA2', 'CHEK2', 'PTEN', 'TP53'))
-        df=df[2:]
-        df=df.reset_index()
-        print(df,contents)
-        if df is not None:
-            print("df is not None")
-            return df.to_dict('rows')
-        else:
-            print("df is None")
-            return [{}]
-    else:
-        print("contents is not None")
-        return [{}]
+@app.callback(
+    Output(component_id='my-div', component_property='children'),
+    [Input(component_id='my-dropdown', component_property='value')]
+)
+def update_output_div(input_value):
+    return "Patient {}, we\'ve detected the following mutated genes: {}. The chemotherapy options formulated to work best with the mutations are below, as well as their relative efficacy score based on drug-drug and gene interactions. Please discontinue the following medications based on counterindications: {}".format(id1,input_value,(drug_harm['Drug'].items))
+
+@app.callback(Output(component_id='my-div2', component_property='children'),
+   [Input('button', 'n_clicks')],
+   state=[State(component_id='my-id', component_property='value')]
+)
+
+def update_meds(n_clicks, input_val):
+   return 'You are currently taking "{}"'.format(input_val)# @app.callback(Output(component_id='medtable', component_property='data'), [Input(component_id='my-dropdown', component_property='value')])
+# def update_rows(input_value):
+#     calc_col(input_value)
+#     drug_suggested= out.nsmallest(5,('sum'[:4]))
+#     drug_harm = out.nlargest(5,'sum')
+#     drug_suggested[['Drug','sum']].to_csv(path+"suggested.csv")
+#     drug_harm[['Drug','sum']].to_csv(path+"harm.csv")
+#     columns=[{"name": i, "id": i} for i in df2.columns[1:]],
+#     pd.read_csv(path+'suggested.csv'),
+#     df_1 = mut_fil[['Drug', 'Effect size']]
+#     data = df_1.to_dict('rows')
+#     return data,columns
+
+# # callback table creation
+# @app.callback(Output('table', 'data'),
+#               [Input('upload-data', 'contents'),
+#                Input('upload-data', 'filename')])
+# def update_output(contents, filename):
+#     if contents is not None:
+#         print("contents is None")
+#         df = pd.read_csv(io.StringIO(base64.b64decode(filename).decode('utf-8')), sep='\t', names=('Common', 'BRCA1', 'BRCA2', 'CHEK2', 'PTEN', 'TP53'))
+#         df=df[2:]
+#         df=df.,reset_index()
+#         print(df,contents)
+#         if df is not None:
+#             print("df is not None")
+#             df.append(data)
+#             return df.to_dict('rows')
+#         else:
+#             print("df is None")
+#             return [{}]
+#     else:
+#         print("contents is not None")
+#         return [{}]
 
 if __name__ == '__main__':
     app.run_server(debug=True)

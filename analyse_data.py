@@ -1,4 +1,5 @@
-path="D:/documents/work/athena_try/"
+import pandas as pd
+path="C:\\Users\\Helen Flynn\\Documents\\Github\\Her2_ToHer"
 def column_get(mut_name):
     import pandas as pd
     mut_fil=pd.read_csv(path+mut_name+".csv")
@@ -7,8 +8,6 @@ def column_get(mut_name):
 
 list_name=["BRCA1","BRCA2"] ##this is the list of mutations present in the data
 def calc_col(list_name):
-    import glob2
-    import pandas as pd
     d = pd.DataFrame(columns=['Drug','Effect size'])
     for x in list_name:
         temp = column_get(x)
@@ -18,7 +17,6 @@ def calc_col(list_name):
 
 calc_col(list_name)
 
-import pandas as pd
 out=pd.read_csv(path+"out.csv")
 out['sum'] = out['Effect size_y'] + out['Effect size']
 
@@ -27,4 +25,3 @@ drug_harm = out.nlargest(5,'sum')
 
 drug_suggested[['Drug','sum']].to_csv(path+"suggested.csv")
 drug_harm[['Drug','sum']].to_csv(path+"harm.csv")
-
