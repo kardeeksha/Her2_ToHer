@@ -7,6 +7,8 @@ import dash_html_components as html
 from ensemblrest import EnsemblRest
 import random
 import pandas as pd
+from data_interactions import drug_rxcui, list_drugs
+
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -107,18 +109,28 @@ try:
 except KeyError:
     out['sum'] = out['Effect size_y']
 
-drug_suggested= out.nsmallest(5,('sum'[:4]))
-drug_harm = out.nlargest(5,'sum')
+drug_suggested = out.nsmallest(20, 'sum')
+hugg = out.nlargest(5, 'sum')
+df_harm=hugg[['Drug']]
 
-drug_suggested[['Drug','sum']].to_csv(path+"suggested.csv")
-drug_harm[['Drug','sum']].to_csv(path+"harm.csv")
 
-df2 = pd.read_csv(path+'suggested.csv')
+l_patient = ['lipitor']  # list of drugs given by patient (already taking)
+sugg = pd.read_csv(path+"suggested.csv")
+for p in l_patient:
+    inter = list_drugs(drug_rxcui(p))
+    for index, row in sugg.iterrows():
+           if row['Drug'] in inter:
+                sugg = sugg.drop(index)
+sugg=sugg.nsmallest(5,'sum')
+df2=sugg[['Drug']]
+
+#.to_csv(path+"suggested.csv")
+
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 app.layout = html.Div([
-    html.H1(children = "HER2her",
+    html.H1(children = "HER2her: Our Technology, Your Future.",
     style = {
         'textAlign' : 'center',
         'color' : 'black'
@@ -135,13 +147,13 @@ app.layout = html.Div([
             'lineHeight': '60px',
             'borderWidth': '1px',
             'borderStyle': 'dashed',
-            'backgroundColor' : 'pink',
+            'backgroundColor' : '#FFDFD3',
             'borderRadius': '5px',
             'textAlign': 'center',
             'margin': '10px'
         }),
     html.Div([
-       dcc.Input(placeholder='Enter Current Medications...', type="text", id='my-id', value=''),
+       dcc.Input(placeholder='Enter Current Medications...', type="text", id='my-id', value='Lipitor'),
        html.Button('Submit', id='button'),
        html.Div(id='my-div2')
 ],
@@ -214,7 +226,7 @@ app.layout = html.Div([
     [Input(component_id='my-dropdown', component_property='value')]
 )
 def update_output_div(input_value):
-    return "Patient {}, we\'ve detected the following mutated genes: {}. The chemotherapy options formulated to work best with the mutations are below, as well as their relative efficacy score based on drug-drug and gene interactions. Please discontinue the following medications based on counterindications: {}".format(id1,input_value,(drug_harm['Drug'].items))
+    return "Patient {}, we\'ve detected the following mutated genes: {}. The chemotherapy options formulated to work best with the mutations are below, as well as their relative efficacy score based on drug-drug and gene interactions. Please discontinue the following medications based on counterindications from your current medications: {}".format(id1,input_value,df2.to_string(index=False))
 
 @app.callback(Output(component_id='my-div2', component_property='children'),
    [Input('button', 'n_clicks')],
