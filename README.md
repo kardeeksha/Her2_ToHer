@@ -2,7 +2,7 @@
 
 
 
-With increased integration of healthcare and technology, patients and researchers look forward to the implementation of personalized healthcare. Her2 to Her aims to bring predictive medicine to the hands of women suffering Breast Cancer. Named after one of the most common biological factors present in Breast Cancer, Her2 to Her allows anyone to upload genomic information (sequence data or mutation list). Our program will then sum the effect scores of various breast cancer drugs, and make a recommendation based on clinical efficacy data.
+With increased integration of healthcare and technology, patients and researchers look forward to the implementation of personalized healthcare. HER2Her aims to bring predictive medicine to the hands of women suffering Breast Cancer. Named after one of the most common biological factors present in Breast Cancer, Her2 to Her allows anyone to upload genomic information (sequence data or mutation list). Our program will then sum the effect scores of various breast cancer drugs, and make a recommendation based on clinical efficacy data.
 
 
 
