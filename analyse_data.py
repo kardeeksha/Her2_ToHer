@@ -42,5 +42,6 @@ for p in l_patient:
            if row['Drug'] in inter:
                 sugg = sugg.drop(index)
 sugg=sugg.nsmallest(5,'sum')
-print(sugg[['Drug']])
+print(sugg)
+print(",".join(list(sugg[['Drug']].split())))
 #.to_csv(path+"suggested.csv")

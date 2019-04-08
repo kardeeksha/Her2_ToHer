@@ -29,6 +29,7 @@ def rand_pt_genes(standards, mutations, pt_genes):
 
 ensRest = EnsemblRest()
 server = "http://rest.ensembl.org"
+key = 'key=AIzaSyACU8QODHAUXs0igLHiqeFgUQaiNPNUGQ0' #enter API secret key here
 
 # standard sequence API data
 standards = []
@@ -41,7 +42,7 @@ tp53_seq = ensRest.getSequenceById(id='ENSG00000141510')
 for i in (brca1_seq, brca2_seq, chek2_seq, pten_seq, tp53_seq):
     standards.append(i['seq'])
 
-# mutation dash_table
+# mutation dash_table; sequences retrieved on ensembl
 mutations = []
 brca1_mut = ensRest.getSequenceById(id =  'ENST00000357654?content-type=text/x-fasta;type=cdna')
 brca2_mut = ensRest.getSequenceById(id = 'ENST00000380152?content-type=text/x-fasta;type=cdna')
@@ -52,7 +53,9 @@ tp53_mut = ensRest.getSequenceById(id = 'ENST00000269305?content-type=text/x-fas
 for i in (brca1_mut, brca2_mut, chek2_mut, pten_mut, tp53_mut):
     mutations.append(i['seq'])
 
+
 random.randint(1, 20)
+#create lists with standard and mutated versions of each gene
 brca1 = [standards[0], mutations[0]]
 brca2 = [standards[1], mutations[1]]
 chek2 = [standards[2], mutations[2]]
@@ -64,7 +67,7 @@ pt_genes = []
 pt_genes = rand_pt_genes(standards, mutations, pt_genes)
 pt_genes_NaN = []
 
-
+#weighted algorithm @ 70% normal gene frequency
 for i in range(len(pt_genes)):
     x = random.randint(1, 10)
     if x < 7:
@@ -108,21 +111,27 @@ try:
     out['sum'] = out['Effect size_y'] + out['Effect size']
 except KeyError:
     out['sum'] = out['Effect size_y']
+out['sum'] = out['Effect size_y'] + out['Effect size']
 
 drug_suggested = out.nsmallest(20, 'sum')
-hugg = out.nlargest(5, 'sum')
-df_harm=hugg[['Drug']]
+drug_harm = out.nlargest(5, 'sum')
 
+drug_suggested[['Drug', 'sum']].to_csv(path+"suggested.csv")
+drug_harm[['Drug', 'sum']].to_csv(path+"harm.csv")
 
 l_patient = ['lipitor']  # list of drugs given by patient (already taking)
-sugg = pd.read_csv(path+"suggested.csv")
+sugg = pd.read_csv(path+"harm.csv")
 for p in l_patient:
     inter = list_drugs(drug_rxcui(p))
     for index, row in sugg.iterrows():
            if row['Drug'] in inter:
                 sugg = sugg.drop(index)
-sugg=sugg.nsmallest(5,'sum')
+sugg=sugg.nlargest(5,'sum')
 df2=sugg[['Drug']]
+
+meds_to_take = pd.read_csv(path+"suggested.csv")
+medtable=meds_to_take.nsmallest(5,'sum')
+medslist=medtable[['Drug']]
 
 #.to_csv(path+"suggested.csv")
 
@@ -199,13 +208,23 @@ app.layout = html.Div([
     html.Div(id='my-div'),
     dash_table.DataTable(
         id='medtable',
-        columns=[{"name": i, "id": i} for i in df2.columns[1:]],
+        columns=[{"name": i, "id": i} for i in sugg.columns[1:]],
         data=df2.to_dict("rows"),
         style_table={
             'padding' : '20px',
             'align' : 'center'
             },
     ),
+    # html.Div(id='my-div1'),
+    # dash_table.DataTable(
+    #     id='avoidtable',
+    #     columns=[{"name": i, "id": i} for i in medtable.columns[1:]],
+    #     data=sugg.to_dict("rows"),
+    #     style_table={
+    #         'padding' : '20px',
+    #         'align' : 'center'
+    #         },
+    # ),
         html.P('We would like to provide you with an interactive map of available cancer care providers to consult as you navigate through your medical journey.'
         ),
     html.Iframe(
@@ -215,7 +234,7 @@ app.layout = html.Div([
         'border':0,
         'padding' : '50px',
        },
-      src="https://www.google.com/maps/embed/v1/search?key=AIzaSyACU8QODHAUXs0igLHiqeFgUQaiNPNUGQ0&q=oncology+center"
+      src="https://www.google.com/maps/embed/v1/search?"+key+"&q=oncology+center"
       )
     ])
 
@@ -226,7 +245,7 @@ app.layout = html.Div([
     [Input(component_id='my-dropdown', component_property='value')]
 )
 def update_output_div(input_value):
-    return "Patient {}, we\'ve detected the following mutated genes: {}. The chemotherapy options formulated to work best with the mutations are below, as well as their relative efficacy score based on drug-drug and gene interactions. Please discontinue the following medications based on counterindications from your current medications: {}".format(id1,input_value,df2.to_string(index=False))
+    return "Patient {}, we\'ve detected the following mutated genes: {}. The chemotherapy options formulated to work best with the mutations are below, as well as their relative efficacy score based on drug-drug and gene interactions. Please discontinue the following medications based on counterindications from your current medications: {}".format(id1,input_value,medslist)
 
 @app.callback(Output(component_id='my-div2', component_property='children'),
    [Input('button', 'n_clicks')],
@@ -234,7 +253,9 @@ def update_output_div(input_value):
 )
 
 def update_meds(n_clicks, input_val):
-   return 'You are currently taking "{}"'.format(input_val)# @app.callback(Output(component_id='medtable', component_property='data'), [Input(component_id='my-dropdown', component_property='value')])
+   return 'You are currently taking "{}"'.format(input_val)
+   # @app.callback(Output(component_id='medtable', component_property='data'), [Input(component_id='my-dropdown', component_property='value')])
+#TODO: Update drug warnings based on input
 # def update_rows(input_value):
 #     calc_col(input_value)
 #     drug_suggested= out.nsmallest(5,('sum'[:4]))
@@ -247,27 +268,6 @@ def update_meds(n_clicks, input_val):
 #     data = df_1.to_dict('rows')
 #     return data,columns
 
-# # callback table creation
-# @app.callback(Output('table', 'data'),
-#               [Input('upload-data', 'contents'),
-#                Input('upload-data', 'filename')])
-# def update_output(contents, filename):
-#     if contents is not None:
-#         print("contents is None")
-#         df = pd.read_csv(io.StringIO(base64.b64decode(filename).decode('utf-8')), sep='\t', names=('Common', 'BRCA1', 'BRCA2', 'CHEK2', 'PTEN', 'TP53'))
-#         df=df[2:]
-#         df=df.,reset_index()
-#         print(df,contents)
-#         if df is not None:
-#             print("df is not None")
-#             df.append(data)
-#             return df.to_dict('rows')
-#         else:
-#             print("df is None")
-#             return [{}]
-#     else:
-#         print("contents is not None")
-#         return [{}]
 
 if __name__ == '__main__':
     app.run_server(debug=True)
