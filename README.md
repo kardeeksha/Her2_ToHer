@@ -1,4 +1,4 @@
-\# HER2Her
+# HER2Her
 
 
 
@@ -6,7 +6,7 @@ With increased integration of healthcare and technology, patients and researcher
 
 
 
-\## Uploading Data
+## Uploading Data
 
 
 
@@ -14,7 +14,7 @@ Launch the web version of Her2 to Her. Upload either a csv of the patient’s se
 
 
 
-\## Clinical Data
+## Clinical Data
 
 
 
@@ -22,7 +22,7 @@ All drug efficacy data is given by (<https://www.cancerrxgene.org/>), who collec
 
 
 
-\## Authors
+## Authors
 
 
 
